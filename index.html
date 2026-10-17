@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Remimbark</title>
+<title>La Posada</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
     font-family: "Nunito", system-ui, sans-serif;
     line-height: 1.5;
   }
-  main { width: 100%; max-width: 480px; }
+  main { width: 100%; max-width: 600px; }
   #scene {
     display: block;
     width: calc(100% - 8px);
@@ -75,7 +75,8 @@
     box-shadow: var(--notch), inset 0 4px 0 rgba(255,255,255,.35), inset 0 -4px 0 rgba(0,0,0,.25);
   }
   label { display: block; margin-bottom: 6px; font-weight: 700; color: var(--lilac); }
-  input {
+  input, textarea {
+    resize: vertical;
     display: block;
     width: calc(100% - 8px);
     margin: 4px 4px 20px;
@@ -101,17 +102,55 @@
   .primary:hover { background: #f7b872; }
   .primary:active { transform: translateY(2px); }
   .primary:disabled { opacity: .6; cursor: wait; }
-  button:focus-visible, input:focus-visible { outline: 3px solid var(--cream); outline-offset: 6px; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--cream); outline-offset: 6px; }
   #msg { min-height: 1.5em; margin: 20px 4px 0; font-weight: 700; }
   #msg.error { color: var(--rose); }
   #msg.ok { color: var(--fern); }
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .bar p { margin: 0; }
+  h2 { font-family: "Pixelify Sans", monospace; font-size: 1.6rem; margin: 0 0 16px; }
+  #thread-view h2 { margin-top: 28px; }
+  #thread-view > .small { margin-bottom: 20px; }
+  .small {
+    margin: 4px;
+    padding: 8px 14px;
+    border: 0;
+    background: var(--card-deep);
+    color: var(--cream);
+    font: 500 .95rem "Pixelify Sans", monospace;
+    cursor: pointer;
+    box-shadow: var(--notch), inset 0 -4px 0 rgba(0,0,0,.3);
+  }
+  .small:hover { background: #3d3463; }
+  .small.danger { color: var(--rose); }
+  .list { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 16px; }
+  .thread-btn {
+    display: block;
+    width: calc(100% - 8px);
+    margin: 4px;
+    padding: 14px;
+    text-align: left;
+    border: 0;
+    background: var(--card-deep);
+    color: var(--cream);
+    font: inherit;
+    cursor: pointer;
+    box-shadow: var(--notch), inset 0 4px 0 rgba(255,255,255,.05);
+  }
+  .thread-btn:hover { background: #2e2750; }
+  .thread-btn strong { display: block; font-size: 1.05rem; }
+  .meta { color: var(--lilac); font-size: .9rem; }
+  .post { white-space: pre-wrap; overflow-wrap: anywhere; margin: 12px 0 16px; }
+  .comment { margin: 4px; padding: 14px; background: var(--card-deep); box-shadow: var(--notch); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .empty { color: var(--lilac); }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <main>
   <canvas id="scene" role="img" aria-label="Ilustración pixelada de una cabaña con la ventana encendida bajo la luna"></canvas>
-  <h1>Remimbark</h1>
+  <h1>La Posada</h1>
   <p class="lead">Un rincón para nuestro grupo. Entra, siéntate y cuenta algo.</p>
 
   <div class="card">
@@ -130,8 +169,24 @@
     </section>
 
     <section id="account-view" hidden>
-      <p>Ya estás dentro, <strong id="username"></strong>.</p>
-      <button class="primary" id="logout-btn" type="button">Cerrar sesión</button>
+      <div class="bar">
+        <p>Ya estás dentro, <strong id="username"></strong>.</p>
+        <button class="small" id="logout-btn" type="button">Cerrar sesión</button>
+      </div>
+
+      <div id="list-view">
+        <h2>Temas</h2>
+        <form id="thread-form">
+          <label for="t-title">Título</label>
+          <input id="t-title" minlength="3" maxlength="120" required>
+          <label for="t-content">Mensaje</label>
+          <textarea id="t-content" rows="4" maxlength="5000" required></textarea>
+          <button class="primary" type="submit">Publicar tema</button>
+        </form>
+        <ul id="thread-list" class="list"></ul>
+      </div>
+
+      <div id="thread-view" hidden></div>
     </section>
 
     <p id="msg" role="status"></p>
@@ -140,6 +195,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
+<script src="foro.js"></script>
 <script>
   /* ---------- Escena pixelada (se dibuja con código, sin imágenes) ---------- */
   (function drawScene() {
@@ -263,7 +319,12 @@
       }
     } else {
       const { error } = await db.auth.signInWithPassword({ email, password });
-      showMessage(error ? "Correo o contraseña incorrectos." : "", error ? "error" : "");
+      if (error) {
+        const wrongLogin = error.message === "Invalid login credentials";
+        showMessage(wrongLogin ? "Correo o contraseña incorrectos." : "No se pudo iniciar sesión: " + error.message, "error");
+      } else {
+        showMessage("");
+      }
     }
     submitBtn.disabled = false;
   });
@@ -276,6 +337,7 @@
     if (!session) {
       authView.hidden = false;
       accountView.hidden = true;
+      currentUser = null;
       return;
     }
     const { data } = await db
@@ -286,10 +348,14 @@
     document.getElementById("username").textContent = data ? data.username : session.user.email;
     authView.hidden = true;
     accountView.hidden = false;
+    startForum(session.user);
   }
 
   db.auth.getSession().then(({ data }) => showSession(data.session));
-  db.auth.onAuthStateChange((_event, session) => showSession(session));
+  db.auth.onAuthStateChange((_event, session) => {
+    // setTimeout evita un bloqueo conocido de Supabase cuando se hacen consultas dentro de este aviso
+    setTimeout(() => showSession(session), 0);
+  });
 </script>
 </body>
 </html>
