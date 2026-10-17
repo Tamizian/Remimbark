@@ -26,6 +26,7 @@ function startForum(user) {
 
 async function loadThreads() {
   $("thread-view").hidden = true;
+  $("profile-view").hidden = true;
   $("list-view").hidden = false;
   const list = $("thread-list");
 
