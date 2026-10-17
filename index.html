@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remimbark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&family=Pixelify+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #1d1830;
+    --card: #342c52;
+    --card-deep: #251f3d;
+    --edge: #120e1f;
+    --cream: #f3e4c4;
+    --lilac: #cdbfe6;
+    --lantern: #f2a65a;
+    --rose: #ff9db5;
+    --fern: #9fd4a8;
+    /* Borde "pixelado": cuatro sombras duras que dejan las esquinas sin rellenar */
+    --notch: 0 -4px 0 var(--edge), 0 4px 0 var(--edge), -4px 0 0 var(--edge), 4px 0 0 var(--edge);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 32px 24px;
+    background: var(--night);
+    color: var(--cream);
+    font-family: "Nunito", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  main { width: 100%; max-width: 480px; }
+  #scene {
+    display: block;
+    width: calc(100% - 8px);
+    margin: 4px 4px 28px;
+    aspect-ratio: 120 / 36;
+    image-rendering: pixelated;
+    box-shadow: var(--notch);
+  }
+  h1 {
+    font-family: "Pixelify Sans", monospace;
+    font-weight: 700;
+    font-size: 3.2rem;
+    line-height: 1;
+    margin: 0 0 12px;
+    text-shadow: 3px 3px 0 var(--edge);
+  }
+  .lead { margin: 0 0 28px; color: var(--lilac); }
+  .card {
+    margin: 4px;
+    padding: 28px;
+    background: var(--card);
+    box-shadow: var(--notch), inset 0 4px 0 rgba(255,255,255,.07), inset 0 -4px 0 rgba(0,0,0,.25);
+  }
+  .tabs { display: flex; gap: 12px; margin-bottom: 24px; }
+  .tabs button {
+    flex: 1;
+    margin: 4px;
+    padding: 10px;
+    border: 0;
+    background: var(--card-deep);
+    color: var(--cream);
+    font: 500 1.05rem "Pixelify Sans", monospace;
+    cursor: pointer;
+    box-shadow: var(--notch), inset 0 -4px 0 rgba(0,0,0,.3);
+  }
+  .tabs button[aria-selected="true"] {
+    background: var(--lantern);
+    color: #2b1a0c;
+    box-shadow: var(--notch), inset 0 4px 0 rgba(255,255,255,.35), inset 0 -4px 0 rgba(0,0,0,.25);
+  }
+  label { display: block; margin-bottom: 6px; font-weight: 700; color: var(--lilac); }
+  input {
+    display: block;
+    width: calc(100% - 8px);
+    margin: 4px 4px 20px;
+    padding: 12px;
+    border: 0;
+    background: var(--card-deep);
+    color: var(--cream);
+    font: inherit;
+    box-shadow: var(--notch), inset 0 4px 0 rgba(0,0,0,.35);
+  }
+  .primary {
+    display: block;
+    width: calc(100% - 8px);
+    margin: 4px;
+    padding: 12px;
+    border: 0;
+    background: var(--lantern);
+    color: #2b1a0c;
+    font: 700 1.2rem "Pixelify Sans", monospace;
+    cursor: pointer;
+    box-shadow: var(--notch), inset 0 4px 0 rgba(255,255,255,.35), inset 0 -4px 0 rgba(0,0,0,.25);
+  }
+  .primary:hover { background: #f7b872; }
+  .primary:active { transform: translateY(2px); }
+  .primary:disabled { opacity: .6; cursor: wait; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--cream); outline-offset: 6px; }
+  #msg { min-height: 1.5em; margin: 20px 4px 0; font-weight: 700; }
+  #msg.error { color: var(--rose); }
+  #msg.ok { color: var(--fern); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <canvas id="scene" role="img" aria-label="Ilustración pixelada de una cabaña con la ventana encendida bajo la luna"></canvas>
+  <h1>Remimbark</h1>
+  <p class="lead">Un rincón para nuestro grupo. Entra, siéntate y cuenta algo.</p>
+
+  <div class="card">
+    <section id="auth-view">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" id="tab-login" aria-selected="true">Iniciar sesión</button>
+        <button type="button" role="tab" id="tab-register" aria-selected="false">Crear cuenta</button>
+      </div>
+      <form id="auth-form">
+        <label for="email">Correo electrónico</label>
+        <input id="email" type="email" autocomplete="email" required>
+        <label for="password">Contraseña (mínimo 8 caracteres)</label>
+        <input id="password" type="password" minlength="8" autocomplete="current-password" required>
+        <button class="primary" id="submit-btn" type="submit">Iniciar sesión</button>
+      </form>
+    </section>
+
+    <section id="account-view" hidden>
+      <p>Ya estás dentro, <strong id="username"></strong>.</p>
+      <button class="primary" id="logout-btn" type="button">Cerrar sesión</button>
+    </section>
+
+    <p id="msg" role="status"></p>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+  /* ---------- Escena pixelada (se dibuja con código, sin imágenes) ---------- */
+  (function drawScene() {
+    const W = 120, H = 36;
+    const canvas = document.getElementById("scene");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    const px = (x, y, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); };
+    const rand = (seed) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    const hillFar = (x) => 24 + Math.round(2.5 * Math.sin(x / 9) + 1.5 * Math.sin(x / 4.3));
+    const hillNear = (x) => 29 + Math.round(2 * Math.sin(x / 6 + 2) + Math.sin(x / 2.7));
+
+    // Cielo en franjas con borde punteado
+    const sky = ["#141029", "#1d1838", "#2b2250", "#3d2e63", "#6b4a7a", "#b8647a"];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const b = Math.min(Math.floor(y / 4), sky.length - 1);
+      px(x, y, (y % 4 === 3 && (x + y) % 2 === 0 && sky[b + 1]) ? sky[b + 1] : sky[b]);
+    }
+
+    // Estrellas
+    const r = rand(7);
+    for (let i = 0; i < 45; i++) px(r() * W, r() * 16, r() > 0.8 ? "#fff3d6" : "#cdbfe6");
+    [[15, 5], [60, 8], [82, 3], [34, 12]].forEach(([x, y]) => {
+      [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => px(x + dx, y + dy, "#f3e4c4"));
+    });
+
+    // Luna con halo punteado y cráteres
+    for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) {
+      const d = dx * dx + dy * dy;
+      if (d <= 36) px(98 + dx, 9 + dy, "#f3e4c4");
+      else if (d <= 72 && (dx + dy) % 2 === 0) px(98 + dx, 9 + dy, "#5b4a85");
+    }
+    [[96, 7], [100, 11], [97, 12], [101, 7]].forEach(([x, y]) => px(x, y, "#d6c29b"));
+
+    // Colinas lejanas y cercanas (con borde de musgo)
+    for (let x = 0; x < W; x++) {
+      for (let y = hillFar(x); y < H; y++) px(x, y, "#3a2f5e");
+      for (let y = hillNear(x); y < H; y++) px(x, y, "#1e1736");
+      px(x, hillNear(x), "#3e5b52");
+    }
+
+    // Pinos
+    [[8, 7], [14, 9], [20, 6], [70, 8], [76, 10], [84, 7], [108, 8], [113, 6]].forEach(([x, h]) => {
+      const base = hillNear(x);
+      for (let i = 0; i < h; i++) {
+        const w = 1 + Math.floor(i * 0.7);
+        for (let dx = -w; dx <= w; dx++) px(x + dx, base - h + i, dx === -w ? "#2b4a4a" : "#16112a");
+      }
+      px(x, base, "#120e1f"); px(x, base + 1, "#120e1f");
+    });
+
+    // Cabaña
+    const cx = 48, by = hillNear(cx);
+    for (let x = cx - 8; x <= cx + 7; x++) {
+      for (let y = by; y < H; y++) px(x, y, "#1e1736");
+      px(x, by, "#3e5b52");
+    }
+    for (let y = by - 7; y < by; y++) for (let x = cx - 7; x <= cx + 6; x++) px(x, y, (x + y) % 4 === 0 ? "#4a3a6b" : "#54427a");
+    for (let i = 0; i < 6; i++) {
+      const y = by - 8 - i;
+      for (let x = cx - 8 + i; x <= cx + 7 - i; x++) px(x, y, "#2a1f47");
+      px(cx - 8 + i, y, "#b8647a"); px(cx + 7 - i, y, "#b8647a");
+    }
+    for (let y = by - 14; y <= by - 11; y++) { px(cx + 3, y, "#3a2d5c"); px(cx + 4, y, "#3a2d5c"); }
+    px(cx + 4, by - 16, "#9d90bd"); px(cx + 5, by - 18, "#7d709f"); px(cx + 4, by - 20, "#5e5380");
+    for (let y = by - 5; y <= by - 3; y++) for (let x = cx - 5; x <= cx - 3; x++) px(x, y, "#ffd08a");
+    for (let y = by - 5; y <= by - 3; y++) px(cx - 4, y, "#c9762f");
+    for (let x = cx - 7; x <= cx - 1; x++) if (x % 2 === 0) px(x, by, "#f2a65a");
+    for (let y = by - 4; y < by; y++) for (let x = cx + 1; x <= cx + 3; x++) px(x, y, "#2a1f47");
+    px(cx + 3, by - 2, "#f2a65a");
+
+    // Luciérnagas
+    [[30, 27], [62, 26], [82, 24], [38, 23]].forEach(([x, y]) => px(x, y, "#ffe9a8"));
+  })();
+
+  /* ---------- Conexión con Supabase ---------- */
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const authView = document.getElementById("auth-view");
+  const accountView = document.getElementById("account-view");
+  const form = document.getElementById("auth-form");
+  const msg = document.getElementById("msg");
+  const submitBtn = document.getElementById("submit-btn");
+  const tabLogin = document.getElementById("tab-login");
+  const tabRegister = document.getElementById("tab-register");
+  let mode = "login";
+
+  function showMessage(text, type) {
+    msg.textContent = text;
+    msg.className = type || "";
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    const isLogin = mode === "login";
+    tabLogin.setAttribute("aria-selected", isLogin);
+    tabRegister.setAttribute("aria-selected", !isLogin);
+    submitBtn.textContent = isLogin ? "Iniciar sesión" : "Crear cuenta";
+    document.getElementById("password").autocomplete = isLogin ? "current-password" : "new-password";
+    showMessage("");
+  }
+
+  tabLogin.addEventListener("click", () => setMode("login"));
+  tabRegister.addEventListener("click", () => setMode("register"));
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    submitBtn.disabled = true;
+    showMessage("Un momento…");
+
+    if (mode === "register") {
+      const { data, error } = await db.auth.signUp({ email, password });
+      if (error) {
+        showMessage(error.message, "error");
+      } else if (!data.session) {
+        showMessage("Cuenta creada. Revisa tu correo para confirmarla.", "ok");
+      } else {
+        showMessage("Cuenta creada.", "ok");
+      }
+    } else {
+      const { error } = await db.auth.signInWithPassword({ email, password });
+      showMessage(error ? "Correo o contraseña incorrectos." : "", error ? "error" : "");
+    }
+    submitBtn.disabled = false;
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", async () => {
+    await db.auth.signOut();
+  });
+
+  async function showSession(session) {
+    if (!session) {
+      authView.hidden = false;
+      accountView.hidden = true;
+      return;
+    }
+    const { data } = await db
+      .from("profiles")
+      .select("username")
+      .eq("id", session.user.id)
+      .single();
+    document.getElementById("username").textContent = data ? data.username : session.user.email;
+    authView.hidden = true;
+    accountView.hidden = false;
+  }
+
+  db.auth.getSession().then(({ data }) => showSession(data.session));
+  db.auth.onAuthStateChange((_event, session) => showSession(session));
+</script>
+</body>
+</html>
